@@ -1,101 +1,52 @@
-# Lista de instalación para Raspberry Pi OS
+# Continuación de configuración en Raspberry Pi 4
 
-## Fase 1: instalación del sistema
+Se usará el cable `OBD2-RJ45-ENET-2M`. La Raspberry Pi 4 tiene Ethernet integrado: no hace falta USB–Ethernet salvo que quieras separar la LAN del vehículo y la red doméstica. La topología puede requerir una segunda interfaz para que teléfono/WiFi y vehículo estén disponibles simultáneamente.
 
-1. Instalar Raspberry Pi OS de 64 bits.
-2. Actualizar el sistema:
+## Primero: registrar interfaces, sin vehículo conectado
+
+En la Raspberry Pi ejecuta:
+
+```bash
+ip -br address
+ip link
+```
+
+Guarda la salida. La interfaz integrada suele llamarse `eth0`, pero hay que confirmarlo; no configures una IP ni cambies rutas todavía.
+
+Con el cable/adaptador conectado al Pi, revisa de nuevo:
+
+```bash
+ip -br address
+ip -s link
+```
+
+El cable OBD-RJ45 puede terminar directamente en Ethernet. Si el enchufe del Pi y el del cable son ambos RJ45, conéctalos directamente; no añadas un USB–Ethernet a menos que necesites una interfaz adicional.
+
+## Instalar y arrancar la API local (sin vehículo)
 
 ```bash
 sudo apt update
-sudo apt full-upgrade -y
-sudo apt install -y python3 python3-venv python3-pip git
+sudo apt install -y git python3-venv python3-pip
+cd ~
+git clone https://github.com/homellobu/volvo-v90-obd-monitor.git
+cd volvo-v90-obd-monitor
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+uvicorn backend.api:app --host 0.0.0.0 --port 8000
 ```
 
-3. Conectar el adaptador USB–Ethernet al Raspberry Pi.
-4. Conectar el cable OBD-II-RJ45/ENET al adaptador Ethernet.
-5. Encender el vehículo, pero mantener al principio el motor apagado si es posible.
+Desde otro dispositivo en la misma red abre `http://<IP-DE-LA-RASPBERRY>:8000`. La página mostrará explícitamente datos no disponibles: es lo esperado mientras no se implemente y valide el transporte del adaptador.
 
-## Fase 2: identificar la interfaz
+API de prueba:
 
-```bash
-ip link
-ip -br address
-nmcli device status
-```
+- `GET /api/status`
+- `GET /api/vehicle`
+- `GET /api/modules`
+- `GET /api/dtc`
+- `GET /api/live`
+- `POST /api/dtc/clear` (bloqueado intencionadamente)
 
-Registrar el nombre real de la interfaz, por ejemplo `eth0`, `eth1` o `enx...`.
+## Antes de conectar al coche
 
-Configurar una dirección adecuada en una de las interfaces físicas sin deshabilitar WiFi durante las pruebas:
-
-```bash
-nmcli connection show
-nmcli device set <INTERFACE> managed yes
-```
-
-No modificar la dirección ni el gateway hasta haber confirmado el esquema de red usado por el vehículo. No usar valores por suposición.
-
-## Fase 3: comprobar el enlace físico
-
-```bash
-ethtool <INTERFACE>
-ip link set <INTERFACE> down
-ip link set <INTERFACE> up
-ip -br address
-sudo tcpdump -ni <INTERFACE> -e
-```
-
-La comprobación inicial debe buscar únicamente tráfico de descubrimiento de capa 2/3. No enviar solicitudes UDS ni de borrado.
-
-## Fase 4: entorno Python
-
-```bash
-cd /home/pi
-python3 -m venv volvo-obd/.venv
-source volvo-obd/.venv/bin/activate
-python -m pip install --upgrade pip
-```
-
-Dependencias iniciales previstas:
-
-```text
-fastapi
-uvicorn[standard]
-websockets
-python-can
-udsoncan
-```
-
-Estas dependencias no garantizan soporte DoIP ni comunicación con módulos Volvo. DoIP requiere una implementación o biblioteca validada.
-
-## Fase 5: pruebas seguras
-
-1. Confirmar que la interfaz Ethernet cambia de estado.
-2. Capturar tráfico disponible.
-3. Determinar direcciones IPv4, MAC y puertos anunciados.
-4. Detectar paquetes de descubrimiento DoIP si existen.
-5. Registrar el enlace sin enviar escrituras.
-6. Implementar el backend solo después de confirmar el transporte.
-
-## Comprobaciones prohibidas
-
-- escribir parámetros;
-- borrar DTC;
-- iniciar reprogramación;
-- codificar módulos;
-- ejecutar adaptaciones;
-- probar actuadores;
-- enviar paquetes arbitrarios a todos los módulos.
-
-## Archivos previstos
-
-```text
-backend/
-  doip_client.py
-  uds_client.py
-  api.py
-  models.py
-  vehicle.py
-  logging.py
-config/default.toml
-logs/
-```
+Comparte la salida de `ip -br address` y una foto o descripción de ambos extremos del cable. Después se identificará el enlace y la red sin enviar órdenes de diagnóstico. No se debe fijar `192.168.0.2` ni asumir puerto/protocolo: esos valores de la ficha inicial son parámetros de ejemplo y deben contrastarse con el adaptador.

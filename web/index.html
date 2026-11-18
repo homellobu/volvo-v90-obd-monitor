@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Volvo V90 OBD Monitor</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101820; color: #f3f6f8; }
+    body { margin: 0 auto; max-width: 900px; padding: 1rem; }
+    h1 { font-size: 1.4rem; }
+    .status { padding: .8rem; border-radius: .6rem; background: #523e0b; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(145px,1fr)); gap: .7rem; margin-top: 1rem; }
+    .card { background: #1d2b36; border-radius: .6rem; padding: .9rem; }
+    .label { color: #b7c8d3; font-size: .9rem; }
+    .value { font-size: 1.3rem; margin-top: .4rem; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Volvo V90 Cross Country D4 · 2018</h1>
+  <div id="status" class="status">Consultando estado…</div>
+  <section id="values" class="grid"></section>
+  <h2>DTC</h2><pre id="dtc">Sin conexión con el vehículo.</pre>
+  <script>
+    const labels = {
+      coolant_temp_c: 'Refrigerante', rpm: 'RPM', speed_kmh: 'Velocidad',
+      battery_v: 'Voltaje', intake_temp_c: 'Temperatura admisión',
+      intake_pressure_kpa: 'Presión admisión', dpf_soot_percent: 'Hollín DPF',
+      dpf_temperature_c: 'Temperatura DPF', dpf_regeneration_active: 'Regeneración DPF'
+    };
+    function display(value, key) {
+      if (value === null || value === undefined) return 'No disponible';
+      if (key === 'dpf_regeneration_active') return value ? 'Activa' : 'No detectada';
+      const units = {coolant_temp_c:' °C', rpm:' rpm', speed_kmh:' km/h', battery_v:' V', intake_temp_c:' °C', intake_pressure_kpa:' kPa', dpf_soot_percent:' %', dpf_temperature_c:' °C'};
+      return `${value}${units[key] || ''}`;
+    }
+    async function refresh() {
+      const [status, live, dtc] = await Promise.all([
+        fetch('/api/status').then(r => r.json()), fetch('/api/live').then(r => r.json()),
+        fetch('/api/dtc').then(r => r.json())
+      ]);
+      document.querySelector('#status').textContent = status.message;
+      document.querySelector('#values').innerHTML = Object.entries(labels).map(([key,label]) =>
+        `<article class="card"><div class="label">${label}</div><div class="value">${display(live.values[key],key)}</div></article>`
+      ).join('');
+      document.querySelector('#dtc').textContent = JSON.stringify(dtc, null, 2);
+    }
+    refresh().catch(error => document.querySelector('#status').textContent = `Error API: ${error}`);
+    setInterval(() => refresh().catch(() => {}), 2000);
+  </script>
+</body>
+</html>

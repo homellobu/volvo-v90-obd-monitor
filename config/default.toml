@@ -1,13 +1,16 @@
 [hardware]
-adapter = "FENNICA"
-model = "B0F5W8QGSS"
+adapter = "OBD2-RJ45-ENET-2M"
+model = "unverified"
 interface = "ethernet"
-transport = "doip"
+transport = "unverified"
 vehicle = "Volvo V90 Cross Country D4 2018"
 platform = "SPA"
 
 [host]
-address = "192.168.0.2"
+# Raspberry Pi 4 built-in Ethernet is suitable as the host network interface.
+# USB Ethernet is optional; do not assume the adapter's IP address.
+interface = "auto"
+address = ""
 port = 13400
 
 [safety]
