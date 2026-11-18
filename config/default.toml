@@ -1,0 +1,18 @@
+[hardware]
+adapter = "FENNICA"
+model = "B0F5W8QGSS"
+interface = "ethernet"
+transport = "doip"
+vehicle = "Volvo V90 Cross Country D4 2018"
+platform = "SPA"
+
+[host]
+address = "192.168.0.2"
+port = 13400
+
+[safety]
+read_only = true
+allow_dtc_clear = false
+allow_reprogramming = false
+allow_actuator_tests = false
+poll_interval_seconds = 2
